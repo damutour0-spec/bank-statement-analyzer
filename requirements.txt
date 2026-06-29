@@ -1,0 +1,4 @@
+openpyxl
+pdfplumber
+Pillow
+rapidocr_onnxruntime

@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>银行流水标准化与异常校验</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="hero">
+        <div>
+          <p class="eyebrow">Bank Statement Analyzer</p>
+          <h1>银行流水标准化与异常校验</h1>
+          <p class="subhead">上传 CSV、Excel、原生文本 PDF 或 JPG/PNG 图片，生成标准流水、异常清单和可交付 Excel 报告。</p>
+        </div>
+        <form id="uploadForm" class="upload-panel">
+          <input id="fileInput" name="file" type="file" accept=".csv,.txt,.xlsx,.xlsm,.pdf,.jpg,.jpeg,.png,.bmp,.tif,.tiff,.webp,image/*" />
+          <button type="submit">开始解析</button>
+          <p id="statusText" class="status">等待上传文件</p>
+        </form>
+      </section>
+
+      <section id="result" class="result hidden">
+        <div class="summary">
+          <div>
+            <p class="label">识别银行</p>
+            <strong id="bankName">-</strong>
+          </div>
+          <div>
+            <p class="label">交易笔数</p>
+            <strong id="txnCount">-</strong>
+          </div>
+          <div>
+            <p class="label">异常提示</p>
+            <strong id="findingCount">-</strong>
+          </div>
+          <div>
+            <p class="label">置信度</p>
+            <strong id="confidence">-</strong>
+          </div>
+        </div>
+
+        <div class="actions">
+          <a id="exportLink" class="download" href="#" download>下载 Excel 报告</a>
+        </div>
+
+        <div class="grid">
+          <section>
+            <h2>异常清单</h2>
+            <div id="findings" class="list"></div>
+          </section>
+          <section>
+            <h2>交易预览</h2>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>日期</th>
+                    <th>摘要</th>
+                    <th>对方</th>
+                    <th>收入</th>
+                    <th>支出</th>
+                    <th>余额</th>
+                  </tr>
+                </thead>
+                <tbody id="transactions"></tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      </section>
+    </main>
+    <script src="/app.js"></script>
+  </body>
+</html>
