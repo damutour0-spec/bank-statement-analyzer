@@ -16,6 +16,7 @@ from fastapi.staticfiles import StaticFiles
 
 from statement_analyzer.exporter import export_workbook
 from statement_analyzer.parser import parse_statement
+from statement_analyzer.privacy import redact_statement
 from statement_analyzer.rules import analyze_statement
 from statement_analyzer.storage import create_job, get_job, list_jobs, update_job
 
@@ -70,12 +71,23 @@ def int_from_env(name: str, default: int, minimum: int) -> int:
     return max(value, minimum)
 
 
+def bool_from_env(name: str, default: bool = False) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+
 def max_upload_bytes() -> int:
     return int_from_env("MAX_UPLOAD_BYTES", DEFAULT_MAX_UPLOAD_BYTES, 1024 * 1024)
 
 
 def file_retention_hours() -> int:
     return int_from_env("FILE_RETENTION_HOURS", DEFAULT_FILE_RETENTION_HOURS, 1)
+
+
+def redact_exports() -> bool:
+    return bool_from_env("REDACT_EXPORTS", False)
 
 
 def cleanup_expired_files() -> None:
@@ -132,7 +144,8 @@ async def api_upload(file: Annotated[UploadFile, File(...)]) -> dict[str, Any]:
         analysis = analyze_statement(statement)
         export_file = EXPORT_DIR / f"{job_id}_analysis.xlsx"
         EXPORT_DIR.mkdir(parents=True, exist_ok=True)
-        export_workbook(statement, analysis, export_file)
+        export_statement = redact_statement(statement) if redact_exports() else statement
+        export_workbook(export_statement, analysis, export_file)
         update_job(
             job_id,
             {
@@ -142,6 +155,7 @@ async def api_upload(file: Annotated[UploadFile, File(...)]) -> dict[str, Any]:
                 "findings": [item.to_dict() for item in analysis.findings],
                 "metrics": analysis.metrics,
                 "export_url": f"/exports/{export_file.name}",
+                "redacted_export": redact_exports(),
             },
         )
     except Exception as exc:
