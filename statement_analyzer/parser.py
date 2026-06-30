@@ -12,6 +12,7 @@ import pdfplumber
 
 from .models import Statement, Transaction
 from .ocr import extract_text_from_image
+from .receipts import transactions_from_receipt_text as parse_receipt_transactions
 
 
 IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff", ".webp"}
@@ -234,37 +235,11 @@ def transactions_from_text(text: str) -> list[Transaction]:
         )
     if transactions:
         return transactions
-    return transaction_from_receipt_text(text)
+    return parse_receipt_transactions(text)
 
 
 def transaction_from_receipt_text(text: str) -> list[Transaction]:
-    if not any(keyword in text for keyword in ["电子回单", "回单号码", "交易流水号", "金额"]):
-        return []
-
-    amount = extract_receipt_amount(text)
-    date = extract_receipt_date(text)
-    if amount is None or date is None:
-        return []
-
-    summary = extract_label_value(text, "摘要") or extract_label_value(text, "用途") or "银行电子回单"
-    postscript = extract_label_value(text, "备注") or extract_label_value(text, "附言")
-    counterparty = extract_receipt_counterparty(text)
-    raw = " ".join(line.strip() for line in text.splitlines() if line.strip())
-    return [
-        Transaction(
-            row_no=1,
-            transaction_date=date,
-            summary=summary,
-            counterparty_name=counterparty,
-            income_amount=amount,
-            expense_amount=Decimal("0"),
-            balance=None,
-            channel="电子回单",
-            postscript=postscript,
-            raw_text=raw,
-            confidence=0.68,
-        )
-    ]
+    return parse_receipt_transactions(text)
 
 
 def extract_receipt_amount(text: str) -> Decimal | None:
