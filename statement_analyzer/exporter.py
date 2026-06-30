@@ -8,6 +8,7 @@ from typing import Any
 
 import openpyxl
 from openpyxl.styles import Alignment, Font, PatternFill
+from openpyxl.utils import get_column_letter
 
 from .models import AnalysisResult, Statement
 
@@ -58,7 +59,7 @@ RULE_DESCRIPTIONS = [
         "counterparty_concentration",
         "对手方集中度较高",
         "最大对手方流水占比过高。",
-        "确认是否为关联方、主要客户、固定资金通道或正常集中结算。",
+        "确认是否为关联方、主要客户或固定资金通道。",
     ),
 ]
 
@@ -120,28 +121,13 @@ def write_cover(ws, statement: Statement, analysis: AnalysisResult) -> None:
 
     note_row = start + 5
     ws.cell(row=note_row, column=1, value="说明").font = Font(bold=True)
-    ws.cell(
-        row=note_row,
-        column=2,
-        value="本报告仅用于流水标准化、数据质量检查和辅助复核，不判断流水真伪。",
-    )
+    ws.cell(row=note_row, column=2, value="本报告仅用于流水标准化、数据质量检查和辅助复核，不判断流水真伪。")
     ws.column_dimensions["A"].width = 18
     ws.column_dimensions["B"].width = 48
 
 
 def write_standard_transactions(ws, statement: Statement) -> None:
-    headers = [
-        "行号",
-        "交易时间",
-        "摘要",
-        "对方户名",
-        "收入",
-        "支出",
-        "余额",
-        "渠道",
-        "附言",
-        "置信度",
-    ]
+    headers = ["行号", "交易时间", "摘要", "对方户名", "收入", "支出", "余额", "渠道", "附言", "置信度"]
     ws.append(headers)
     style_header(ws)
     for item in statement.transactions:
@@ -203,14 +189,7 @@ def write_metrics(ws, analysis: AnalysisResult) -> None:
         "max_balance": "最高余额",
         "avg_balance": "平均余额",
     }
-    amount_keys = {
-        "total_income",
-        "total_expense",
-        "net_flow",
-        "min_balance",
-        "max_balance",
-        "avg_balance",
-    }
+    amount_keys = {"total_income", "total_expense", "net_flow", "min_balance", "max_balance", "avg_balance"}
     for key, label in labels.items():
         value = analysis.metrics.get(key, "")
         ws.append([label, decimal_or_original(value) if key in amount_keys else value])
@@ -329,7 +308,8 @@ def wrap_columns(ws, column_letters: list[str]) -> None:
 def autosize(ws) -> None:
     for column in ws.columns:
         max_len = 0
-        letter = column[0].column_letter
+        first_cell = column[0]
+        letter = getattr(first_cell, "column_letter", None) or get_column_letter(first_cell.column)
         for cell in column:
             max_len = max(max_len, len(str(cell.value or "")))
         ws.column_dimensions[letter].width = min(max(max_len + 2, 10), 60)
