@@ -76,7 +76,7 @@ def test_parse_bocom_receipt_ocr_text():
     assert txn.channel == "交通银行回单"
     assert txn.expense_amount == Decimal("133200.00")
     assert txn.counterparty_name == "江西亚年科技有限公司"
-    assert txn.summary == "设备采购"
+    assert txn.summary == "支付汇兑"
     assert "EEW0000YG0070021" in txn.postscript
 
 
