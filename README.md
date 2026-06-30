@@ -19,6 +19,7 @@ summaries.
   - same-day large in/out activity
   - counterparty concentration
 - Includes a receipt fallback parser for bank e-receipt screenshots.
+- Runs on FastAPI with upload validation and 24-hour file retention by default.
 
 ## Run
 
@@ -34,6 +35,12 @@ Start the app:
 python app.py
 ```
 
+Or run directly with Uvicorn:
+
+```powershell
+python -m uvicorn webapp.main:app --host 127.0.0.1 --port 8765
+```
+
 Open:
 
 ```text
@@ -45,6 +52,18 @@ In the Codex bundled runtime, use:
 ```powershell
 & "C:\Users\刘国良\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe" "C:\Users\刘国良\Documents\软件开发\bank-statement-analyzer\app.py"
 ```
+
+## Runtime Settings
+
+Optional environment variables:
+
+```text
+MAX_UPLOAD_BYTES=20971520
+FILE_RETENTION_HOURS=24
+```
+
+`FILE_RETENTION_HOURS` applies to uploaded source files and exported reports.
+The default is 24 hours.
 
 ## Optional Cloud OCR
 
