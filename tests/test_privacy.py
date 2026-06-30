@@ -9,7 +9,7 @@ def test_mask_text_keeps_short_numbers_and_masks_long_numbers():
 
 
 def test_mask_name_masks_middle_characters():
-    assert mask_name("江西联创电子有限公司") == "江西*******公司"
+    assert mask_name("江西联创电子有限公司") == "江西******公司"
 
 
 def test_redact_statement_masks_counterparty_and_raw_text():
