@@ -44,7 +44,13 @@ def test_export_workbook_has_expected_sheets_and_amount_format(tmp_path):
             "net_flow": "10000.10",
             "monthly": {"2026-01": {"income": "10000.10", "expense": "0", "count": "1"}},
             "top_counterparties": [
-                {"name": "某公司", "income": "10000.10", "expense": "0", "total_flow": "10000.10", "count": "1"}
+                {
+                    "name": "某公司",
+                    "income": "10000.10",
+                    "expense": "0",
+                    "total_flow": "10000.10",
+                    "count": "1",
+                }
             ],
         },
     )
