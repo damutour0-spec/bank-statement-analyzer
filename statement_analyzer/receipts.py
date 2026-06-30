@@ -54,7 +54,14 @@ TEMPLATES = [
 ]
 
 
-RECEIPT_KEYWORDS = ("电子回单", "回单号码", "回单编号", "交易流水号", "账户交易明细", "电子银行承兑汇票")
+RECEIPT_KEYWORDS = (
+    "电子回单",
+    "回单号码",
+    "回单编号",
+    "交易流水号",
+    "账户交易明细",
+    "电子银行承兑汇票",
+)
 
 
 AMOUNT_LABELS = ("金额", "小写", "交易金额", "票据金额", "实付金额")
@@ -127,7 +134,11 @@ def transaction_from_bill_back(text: str, template: ReceiptTemplate) -> list[Tra
         return []
     counterparty = first_value(text, COUNTERPARTY_LABELS) or first_value(text, ("质押权人名称",))
     bill_no = first_value(text, ("票据号码",))
-    postscript_parts = [part for part in [f"票据号码：{bill_no}" if bill_no else "", extract_postscript(text)] if part]
+    postscript_parts = [
+        part
+        for part in [f"票据号码：{bill_no}" if bill_no else "", extract_postscript(text)]
+        if part
+    ]
     return [
         Transaction(
             row_no=1,
@@ -146,9 +157,13 @@ def transaction_from_bill_back(text: str, template: ReceiptTemplate) -> list[Tra
 
 
 def extract_amount(text: str) -> Decimal | None:
+    amount_label_pattern = (
+        r"(?:金额|小写|交易金额|票据金额|实付金额)\s*(?:[:：])?\s*"
+        r"(?:人民币)?\s*[￥¥]?\s*([\d,]+(?:\.\d{1,2})?)"
+    )
     patterns = [
         r"[￥¥]\s*([\d,]+(?:\.\d{1,2})?)\s*元?",
-        r"(?:金额|小写|交易金额|票据金额|实付金额)\s*(?:[:：])?\s*(?:人民币)?\s*[￥¥]?\s*([\d,]+(?:\.\d{1,2})?)",
+        amount_label_pattern,
         r"([\d,]+(?:\.\d{1,2})?)\s*元整",
     ]
     for pattern in patterns:
@@ -159,11 +174,16 @@ def extract_amount(text: str) -> Decimal | None:
 
 
 def extract_date(text: str) -> datetime | None:
+    label_pattern = (
+        r"(?:交易日期|交易时间|记账日期|打印日期|委托日期|背书日期|出票日期)\s*[:：]?\s*"
+        r"(20\d{2}[-/.年]\d{1,2}[-/.月]\d{1,2}(?:[日])?(?:\s+\d{1,2}:\d{1,2}:\d{1,2})?)"
+    )
+    date_time_pattern = r"(20\d{2}[-/.]\d{1,2}[-/.]\d{1,2}(?:\s+\d{1,2}:\d{1,2}:\d{1,2})?)"
     patterns = [
-        r"(?:交易日期|交易时间|记账日期|打印日期|委托日期|背书日期|出票日期)\s*[:：]?\s*(20\d{2}[-/.年]\d{1,2}[-/.月]\d{1,2}(?:[日])?(?:\s+\d{1,2}:\d{1,2}:\d{1,2})?)",
+        label_pattern,
         r"时间戳\s*[:：]?\s*(20\d{2}[-/.]\d{1,2}[-/.]\d{1,2})[-\s.]?\d{0,2}",
         r"(20\d{2}年\d{1,2}月\d{1,2}日)",
-        r"(20\d{2}[-/.]\d{1,2}[-/.]\d{1,2}(?:\s+\d{1,2}:\d{1,2}:\d{1,2})?)",
+        date_time_pattern,
     ]
     for pattern in patterns:
         match = re.search(pattern, text)
@@ -176,9 +196,11 @@ def extract_date(text: str) -> datetime | None:
 
 def infer_direction(text: str) -> str:
     compact = normalize_text(text)
-    if any(keyword in compact for keyword in ["借贷标志借方", "付款人", "付款方", "转账汇出", "付方", "借方"]):
+    expense_keywords = ["借贷标志借方", "付款人", "付款方", "转账汇出", "付方", "借方"]
+    income_keywords = ["借贷标志贷方", "收款入账", "转账汇入", "收款方到账", "贷方"]
+    if any(keyword in compact for keyword in expense_keywords):
         return "expense"
-    if any(keyword in compact for keyword in ["借贷标志贷方", "收款入账", "转账汇入", "收款方到账", "贷方"]):
+    if any(keyword in compact for keyword in income_keywords):
         return "income"
     return "unknown"
 
