@@ -21,6 +21,28 @@
         </form>
       </section>
 
+      <section class="panel">
+        <div class="section-title">
+          <h2>任务列表</h2>
+          <button id="refreshJobs" type="button" class="secondary">刷新</button>
+        </div>
+        <div class="table-wrap compact">
+          <table>
+            <thead>
+              <tr>
+                <th>文件名</th>
+                <th>状态</th>
+                <th>交易</th>
+                <th>异常</th>
+                <th>时间</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="jobsTable"></tbody>
+          </table>
+        </div>
+      </section>
+
       <section id="result" class="result hidden">
         <div class="summary">
           <div>
@@ -72,5 +94,6 @@
       </section>
     </main>
     <script src="/app.js"></script>
+    <script src="/jobs.js"></script>
   </body>
 </html>
