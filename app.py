@@ -8,7 +8,7 @@ import uuid
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import urlparse
 
 from statement_analyzer.exporter import export_workbook
 from statement_analyzer.parser import parse_statement
@@ -22,6 +22,24 @@ UPLOAD_DIR = ROOT / "data" / "uploads"
 EXPORT_DIR = ROOT / "data" / "exports"
 HOST = "127.0.0.1"
 PORT = 8765
+DEFAULT_MAX_UPLOAD_BYTES = 20 * 1024 * 1024
+MULTIPART_OVERHEAD_BYTES = 1024 * 1024
+ALLOWED_SUFFIXES = {
+    ".csv",
+    ".txt",
+    ".xlsx",
+    ".xlsm",
+    ".xltx",
+    ".xltm",
+    ".pdf",
+    ".jpg",
+    ".jpeg",
+    ".png",
+    ".bmp",
+    ".tif",
+    ".tiff",
+    ".webp",
+}
 
 
 def load_dotenv() -> None:
@@ -37,6 +55,15 @@ def load_dotenv() -> None:
         value = value.strip().strip('"').strip("'")
         if key and key not in os.environ:
             os.environ[key] = value
+
+
+def max_upload_bytes() -> int:
+    raw = os.getenv("MAX_UPLOAD_BYTES", str(DEFAULT_MAX_UPLOAD_BYTES))
+    try:
+        value = int(raw)
+    except ValueError:
+        return DEFAULT_MAX_UPLOAD_BYTES
+    return max(value, 1024 * 1024)
 
 
 class AppHandler(BaseHTTPRequestHandler):
@@ -78,12 +105,38 @@ class AppHandler(BaseHTTPRequestHandler):
             self._send_json({"error": "multipart/form-data required"}, HTTPStatus.BAD_REQUEST)
             return
 
-        boundary = content_type.split("boundary=")[-1].encode()
-        length = int(self.headers.get("Content-Length", "0"))
+        boundary = extract_boundary(content_type)
+        if not boundary:
+            self._send_json({"error": "multipart boundary is missing"}, HTTPStatus.BAD_REQUEST)
+            return
+
+        try:
+            length = int(self.headers.get("Content-Length", "0"))
+        except ValueError:
+            self._send_json({"error": "invalid Content-Length"}, HTTPStatus.BAD_REQUEST)
+            return
+
+        upload_limit = max_upload_bytes()
+        if length <= 0:
+            self._send_json({"error": "empty upload request"}, HTTPStatus.BAD_REQUEST)
+            return
+        if length > upload_limit + MULTIPART_OVERHEAD_BYTES:
+            self._send_json(
+                {"error": f"file is too large; limit is {upload_limit // 1024 // 1024}MB"},
+                HTTPStatus.REQUEST_ENTITY_TOO_LARGE,
+            )
+            return
+
         body = self.rfile.read(length)
-        file_name, file_bytes = parse_multipart_file(body, boundary)
+        file_name, file_bytes = parse_multipart_file(body, boundary.encode())
         if not file_name or not file_bytes:
             self._send_json({"error": "file field is required"}, HTTPStatus.BAD_REQUEST)
+            return
+
+        try:
+            validate_upload(file_name, file_bytes, upload_limit)
+        except ValueError as exc:
+            self._send_json({"error": str(exc)}, HTTPStatus.BAD_REQUEST)
             return
 
         job_id = f"job_{uuid.uuid4().hex[:12]}"
@@ -142,10 +195,18 @@ class AppHandler(BaseHTTPRequestHandler):
         print(f"[server] {self.address_string()} - {format % args}")
 
 
+def extract_boundary(content_type: str) -> str:
+    for part in content_type.split(";"):
+        part = part.strip()
+        if part.startswith("boundary="):
+            return part.split("=", 1)[1].strip().strip('"')
+    return ""
+
+
 def parse_multipart_file(body: bytes, boundary: bytes) -> tuple[str | None, bytes | None]:
     delimiter = b"--" + boundary
     for part in body.split(delimiter):
-        if b'Content-Disposition' not in part or b'name="file"' not in part:
+        if b"Content-Disposition" not in part or b'name="file"' not in part:
             continue
         header, _, content = part.partition(b"\r\n\r\n")
         if not content:
@@ -160,6 +221,17 @@ def parse_multipart_file(body: bytes, boundary: bytes) -> tuple[str | None, byte
             content = content[:-2]
         return file_name, content
     return None, None
+
+
+def validate_upload(file_name: str, file_bytes: bytes, upload_limit: int) -> None:
+    suffix = Path(file_name).suffix.lower()
+    if suffix not in ALLOWED_SUFFIXES:
+        allowed = ", ".join(sorted(ALLOWED_SUFFIXES))
+        raise ValueError(f"unsupported file type: {suffix or 'missing suffix'}; allowed: {allowed}")
+    if len(file_bytes) > upload_limit:
+        raise ValueError(f"file is too large; limit is {upload_limit // 1024 // 1024}MB")
+    if suffix == ".pdf" and not file_bytes.startswith(b"%PDF"):
+        raise ValueError("invalid PDF file signature")
 
 
 def sanitize_filename(name: str) -> str:
