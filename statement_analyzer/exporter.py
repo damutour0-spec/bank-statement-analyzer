@@ -130,7 +130,18 @@ def write_cover(ws, statement: Statement, analysis: AnalysisResult) -> None:
 
 
 def write_standard_transactions(ws, statement: Statement) -> None:
-    headers = ["行号", "交易时间", "摘要", "对方户名", "收入", "支出", "余额", "渠道", "附言", "置信度"]
+    headers = [
+        "行号",
+        "交易时间",
+        "摘要",
+        "对方户名",
+        "收入",
+        "支出",
+        "余额",
+        "渠道",
+        "附言",
+        "置信度",
+    ]
     ws.append(headers)
     style_header(ws)
     for item in statement.transactions:
@@ -192,7 +203,14 @@ def write_metrics(ws, analysis: AnalysisResult) -> None:
         "max_balance": "最高余额",
         "avg_balance": "平均余额",
     }
-    amount_keys = {"total_income", "total_expense", "net_flow", "min_balance", "max_balance", "avg_balance"}
+    amount_keys = {
+        "total_income",
+        "total_expense",
+        "net_flow",
+        "min_balance",
+        "max_balance",
+        "avg_balance",
+    }
     for key, label in labels.items():
         value = analysis.metrics.get(key, "")
         ws.append([label, decimal_or_original(value) if key in amount_keys else value])
