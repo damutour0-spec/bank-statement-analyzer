@@ -40,7 +40,8 @@ body {
 }
 
 .eyebrow,
-.label {
+.label,
+.muted {
   margin: 0 0 8px;
   color: var(--muted);
   font-size: 13px;
@@ -78,7 +79,8 @@ input[type="file"] {
 }
 
 button,
-.download {
+.download,
+.mini-link {
   min-height: 42px;
   border: 0;
   border-radius: 6px;
@@ -91,9 +93,28 @@ button,
   padding: 11px 16px;
 }
 
+.secondary {
+  min-height: 36px;
+  background: #e5e7eb;
+  color: var(--ink);
+}
+
+.mini-link {
+  display: inline-block;
+  min-height: 0;
+  padding: 6px 10px;
+}
+
 button:hover,
-.download:hover {
+.download:hover,
+.mini-link:hover {
   background: var(--accent-dark);
+  color: #fff;
+}
+
+.secondary:hover {
+  background: #d1d5db;
+  color: var(--ink);
 }
 
 .status {
@@ -102,12 +123,32 @@ button:hover,
   color: var(--muted);
 }
 
+.panel,
 .result {
   margin-top: 24px;
 }
 
+.panel {
+  padding: 18px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
 .hidden {
   display: none;
+}
+
+.section-title {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.section-title h2 {
+  margin: 0;
 }
 
 .summary {
@@ -178,6 +219,10 @@ h2 {
   border-radius: 6px;
 }
 
+.table-wrap.compact {
+  max-height: 260px;
+}
+
 table {
   width: 100%;
   border-collapse: collapse;
@@ -204,5 +249,9 @@ th {
   .summary {
     grid-template-columns: 1fr;
   }
-}
 
+  .section-title {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
