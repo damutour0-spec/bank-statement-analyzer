@@ -1,6 +1,3 @@
-import importlib
-
-
 def test_sqlite_storage_roundtrip(tmp_path, monkeypatch):
     import statement_analyzer.storage as storage
 
