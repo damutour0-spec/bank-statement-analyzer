@@ -1,11 +1,16 @@
 from __future__ import annotations
 
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
+from typing import Any
 
 import openpyxl
 from openpyxl.styles import Font, PatternFill
 
 from .models import AnalysisResult, Statement
+
+
+AMOUNT_FORMAT = "#,##0.00"
 
 
 def export_workbook(statement: Statement, analysis: AnalysisResult, path: Path) -> None:
@@ -34,14 +39,15 @@ def write_standard_transactions(ws, statement: Statement) -> None:
                 item.transaction_date.strftime("%Y-%m-%d %H:%M:%S") if item.transaction_date else "",
                 item.summary,
                 item.counterparty_name,
-                float(item.income_amount),
-                float(item.expense_amount),
-                float(item.balance) if item.balance is not None else "",
+                item.income_amount,
+                item.expense_amount,
+                item.balance if item.balance is not None else "",
                 item.channel,
                 item.postscript,
                 item.confidence,
             ]
         )
+    format_amount_columns(ws, ["E", "F", "G"])
 
 
 def write_findings(ws, analysis: AnalysisResult) -> None:
@@ -81,22 +87,58 @@ def write_metrics(ws, analysis: AnalysisResult) -> None:
         "max_balance": "最高余额",
         "avg_balance": "平均余额",
     }
+    amount_keys = {"total_income", "total_expense", "net_flow", "min_balance", "max_balance", "avg_balance"}
     for key, label in labels.items():
-        ws.append([label, analysis.metrics.get(key, "")])
+        value = analysis.metrics.get(key, "")
+        ws.append([label, decimal_or_original(value) if key in amount_keys else value])
+    format_amount_columns(ws, ["B"])
 
 
 def write_monthly(ws, analysis: AnalysisResult) -> None:
     ws.append(["月份", "收入", "支出", "交易笔数"])
     style_header(ws)
     for month, values in analysis.metrics.get("monthly", {}).items():
-        ws.append([month, values.get("income"), values.get("expense"), values.get("count")])
+        ws.append(
+            [
+                month,
+                decimal_or_original(values.get("income")),
+                decimal_or_original(values.get("expense")),
+                values.get("count"),
+            ]
+        )
+    format_amount_columns(ws, ["B", "C"])
 
 
 def write_counterparties(ws, analysis: AnalysisResult) -> None:
     ws.append(["对手方", "收入", "支出", "总流水", "交易笔数"])
     style_header(ws)
     for item in analysis.metrics.get("top_counterparties", []):
-        ws.append([item["name"], item["income"], item["expense"], item["total_flow"], item["count"]])
+        ws.append(
+            [
+                item["name"],
+                decimal_or_original(item["income"]),
+                decimal_or_original(item["expense"]),
+                decimal_or_original(item["total_flow"]),
+                item["count"],
+            ]
+        )
+    format_amount_columns(ws, ["B", "C", "D"])
+
+
+def decimal_or_original(value: Any) -> Decimal | Any:
+    if value in (None, ""):
+        return ""
+    try:
+        return Decimal(str(value))
+    except (InvalidOperation, ValueError):
+        return value
+
+
+def format_amount_columns(ws, column_letters: list[str]) -> None:
+    for letter in column_letters:
+        for cell in ws[letter][1:]:
+            if isinstance(cell.value, Decimal):
+                cell.number_format = AMOUNT_FORMAT
 
 
 def style_header(ws) -> None:
