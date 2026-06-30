@@ -10,6 +10,7 @@ import openpyxl
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
+from .categories import classify_transaction
 from .models import AnalysisResult, Statement
 
 
@@ -19,48 +20,13 @@ HEADER_FILL = "1F2937"
 TITLE_FILL = "DBEAFE"
 
 RULE_DESCRIPTIONS = [
-    (
-        "balance_continuity_failed",
-        "余额连续性不匹配",
-        "上一笔余额 + 本笔收入 - 本笔支出 与当前余额不一致。",
-        "优先复核金额方向、余额、是否缺页或漏行。",
-    ),
-    (
-        "duplicate_transaction",
-        "疑似重复交易",
-        "日期、摘要、金额、余额高度一致。",
-        "检查是否重复导入、PDF 重复页或银行流水本身重复。",
-    ),
-    (
-        "low_confidence",
-        "低置信度交易行",
-        "关键字段不完整，或来自 OCR/非结构化文本抽取。",
-        "建议对照原始流水或回单人工确认。",
-    ),
-    (
-        "sensitive_keyword",
-        "敏感关键词",
-        "摘要、附言或对手方命中借款、还款、贷款、网贷等关键词。",
-        "结合业务背景判断是否需要说明材料。",
-    ),
-    (
-        "large_round_amount",
-        "大额整数交易",
-        "交易金额较大且为整数金额。",
-        "用于贷款、审计、尽调时可补充交易背景。",
-    ),
-    (
-        "same_day_in_out",
-        "当日大额进出",
-        "同一天大额收入后又有较大比例支出，资金沉淀较低。",
-        "复核是否为短期周转、过桥、归集或正常经营结算。",
-    ),
-    (
-        "counterparty_concentration",
-        "对手方集中度较高",
-        "最大对手方流水占比过高。",
-        "确认是否为关联方、主要客户或固定资金通道。",
-    ),
+    ("balance_continuity_failed", "余额连续性不匹配", "上一笔余额 + 本笔收入 - 本笔支出 与当前余额不一致。", "优先复核金额方向、余额、是否缺页或漏行。"),
+    ("duplicate_transaction", "疑似重复交易", "日期、摘要、金额、余额高度一致。", "检查是否重复导入、PDF 重复页或银行流水本身重复。"),
+    ("low_confidence", "低置信度交易行", "关键字段不完整，或来自 OCR/非结构化文本抽取。", "建议对照原始流水或回单人工确认。"),
+    ("sensitive_keyword", "敏感关键词", "摘要、附言或对手方命中借款、还款、贷款、网贷等关键词。", "结合业务背景判断是否需要说明材料。"),
+    ("large_round_amount", "大额整数交易", "交易金额较大且为整数金额。", "用于贷款、审计、尽调时可补充交易背景。"),
+    ("same_day_in_out", "当日大额进出", "同一天大额收入后又有较大比例支出，资金沉淀较低。", "复核是否为短期周转、过桥、归集或正常经营结算。"),
+    ("counterparty_concentration", "对手方集中度较高", "最大对手方流水占比过高。", "确认是否为关联方、主要客户或固定资金通道。"),
 ]
 
 
@@ -127,7 +93,7 @@ def write_cover(ws, statement: Statement, analysis: AnalysisResult) -> None:
 
 
 def write_standard_transactions(ws, statement: Statement) -> None:
-    headers = ["行号", "交易时间", "摘要", "对方户名", "收入", "支出", "余额", "渠道", "附言", "置信度"]
+    headers = ["行号", "交易时间", "分类", "摘要", "对方户名", "收入", "支出", "余额", "渠道", "附言", "置信度"]
     ws.append(headers)
     style_header(ws)
     for item in statement.transactions:
@@ -135,6 +101,7 @@ def write_standard_transactions(ws, statement: Statement) -> None:
             [
                 item.row_no,
                 item.transaction_date.strftime("%Y-%m-%d %H:%M:%S") if item.transaction_date else "",
+                classify_transaction(item),
                 item.summary,
                 item.counterparty_name,
                 item.income_amount,
@@ -145,7 +112,7 @@ def write_standard_transactions(ws, statement: Statement) -> None:
                 item.confidence,
             ]
         )
-    format_amount_columns(ws, ["E", "F", "G"])
+    format_amount_columns(ws, ["F", "G", "H"])
     apply_table_view(ws)
 
 
@@ -188,6 +155,7 @@ def write_metrics(ws, analysis: AnalysisResult) -> None:
         "min_balance": "最低余额",
         "max_balance": "最高余额",
         "avg_balance": "平均余额",
+        "rule_profile": "规则模式",
     }
     amount_keys = {"total_income", "total_expense", "net_flow", "min_balance", "max_balance", "avg_balance"}
     for key, label in labels.items():
@@ -217,16 +185,7 @@ def write_counterparties(ws, analysis: AnalysisResult) -> None:
     for item in analysis.metrics.get("top_counterparties", []):
         flow = decimal_or_zero(item.get("total_flow"))
         ratio = float(flow / total_flow) if total_flow else 0
-        ws.append(
-            [
-                item["name"],
-                decimal_or_original(item["income"]),
-                decimal_or_original(item["expense"]),
-                flow,
-                ratio,
-                item["count"],
-            ]
-        )
+        ws.append([item["name"], decimal_or_original(item["income"]), decimal_or_original(item["expense"]), flow, ratio, item["count"]])
     format_amount_columns(ws, ["B", "C", "D"])
     for cell in ws["E"][1:]:
         cell.number_format = PERCENT_FORMAT
@@ -243,19 +202,20 @@ def write_rule_descriptions(ws) -> None:
 
 
 def write_raw_text(ws, statement: Statement) -> None:
-    ws.append(["行号", "交易时间", "渠道", "摘要", "原始文本"])
+    ws.append(["行号", "交易时间", "分类", "渠道", "摘要", "原始文本"])
     style_header(ws)
     for item in statement.transactions:
         ws.append(
             [
                 item.row_no,
                 item.transaction_date.strftime("%Y-%m-%d %H:%M:%S") if item.transaction_date else "",
+                classify_transaction(item),
                 item.channel,
                 item.summary,
                 item.raw_text,
             ]
         )
-    wrap_columns(ws, ["E"])
+    wrap_columns(ws, ["F"])
     apply_table_view(ws)
 
 

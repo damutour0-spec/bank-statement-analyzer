@@ -70,8 +70,10 @@ def test_export_workbook_has_expected_sheets_and_amount_format(tmp_path):
         "原始文本",
     ]
     assert workbook["报告封面"]["A1"].value == "银行流水分析报告"
-    assert Decimal(str(workbook["标准流水"]["E2"].value)) == Decimal("10000.10")
-    assert workbook["标准流水"]["E2"].number_format == "#,##0.00"
+    assert workbook["标准流水"]["C1"].value == "分类"
+    assert workbook["标准流水"]["C2"].value == "payroll"
+    assert Decimal(str(workbook["标准流水"]["F2"].value)) == Decimal("10000.10")
+    assert workbook["标准流水"]["F2"].number_format == "#,##0.00"
     assert workbook["标准流水"].freeze_panes == "A2"
     assert workbook["标准流水"].auto_filter.ref is not None
     assert workbook["异常清单"]["F1"].value == "证据"
@@ -79,4 +81,4 @@ def test_export_workbook_has_expected_sheets_and_amount_format(tmp_path):
     assert workbook["月度汇总"]["D1"].value == "净流入"
     assert workbook["对手方汇总"]["E1"].value == "占比"
     assert workbook["规则说明"].max_row > 1
-    assert "2026-01-01 工资" in workbook["原始文本"]["E2"].value
+    assert "2026-01-01 工资" in workbook["原始文本"]["F2"].value
