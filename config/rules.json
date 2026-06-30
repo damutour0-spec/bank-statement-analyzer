@@ -1,0 +1,98 @@
+{
+  "default_profile": "enterprise_flow_review",
+  "profiles": {
+    "enterprise_flow_review": {
+      "balance_continuity": {
+        "enabled": true,
+        "tolerance": "0.02"
+      },
+      "duplicates": {
+        "enabled": true
+      },
+      "low_confidence": {
+        "enabled": true,
+        "threshold": 0.8
+      },
+      "sensitive_keywords": {
+        "enabled": true,
+        "keywords": ["借款", "还款", "贷款", "网贷", "博彩", "担保", "保证金", "代偿", "逾期", "法院", "执行"]
+      },
+      "large_round_amount": {
+        "enabled": true,
+        "min_amount": "10000",
+        "round_base": "10000"
+      },
+      "same_day_in_out": {
+        "enabled": true,
+        "min_income": "50000",
+        "expense_income_ratio": "0.8"
+      },
+      "counterparty_concentration": {
+        "enabled": true,
+        "max_ratio": "0.5"
+      }
+    },
+    "personal_loan_review": {
+      "balance_continuity": {
+        "enabled": true,
+        "tolerance": "0.02"
+      },
+      "duplicates": {
+        "enabled": true
+      },
+      "low_confidence": {
+        "enabled": true,
+        "threshold": 0.8
+      },
+      "sensitive_keywords": {
+        "enabled": true,
+        "keywords": ["借款", "还款", "贷款", "网贷", "博彩", "担保", "保证金", "代偿", "逾期", "法院", "执行", "消费贷", "小贷"]
+      },
+      "large_round_amount": {
+        "enabled": true,
+        "min_amount": "5000",
+        "round_base": "5000"
+      },
+      "same_day_in_out": {
+        "enabled": true,
+        "min_income": "20000",
+        "expense_income_ratio": "0.75"
+      },
+      "counterparty_concentration": {
+        "enabled": true,
+        "max_ratio": "0.6"
+      }
+    },
+    "audit_review": {
+      "balance_continuity": {
+        "enabled": true,
+        "tolerance": "0.01"
+      },
+      "duplicates": {
+        "enabled": true
+      },
+      "low_confidence": {
+        "enabled": true,
+        "threshold": 0.85
+      },
+      "sensitive_keywords": {
+        "enabled": true,
+        "keywords": ["借款", "还款", "贷款", "网贷", "博彩", "担保", "保证金", "代偿", "逾期", "法院", "执行", "关联", "往来款", "备用金"]
+      },
+      "large_round_amount": {
+        "enabled": true,
+        "min_amount": "10000",
+        "round_base": "10000"
+      },
+      "same_day_in_out": {
+        "enabled": true,
+        "min_income": "30000",
+        "expense_income_ratio": "0.7"
+      },
+      "counterparty_concentration": {
+        "enabled": true,
+        "max_ratio": "0.4"
+      }
+    }
+  }
+}
