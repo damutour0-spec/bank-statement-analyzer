@@ -29,6 +29,7 @@ HOST = "127.0.0.1"
 PORT = 8765
 DEFAULT_MAX_UPLOAD_BYTES = 20 * 1024 * 1024
 DEFAULT_FILE_RETENTION_HOURS = 24
+DEFAULT_MAX_BATCH_FILES = 10
 ALLOWED_SUFFIXES = {
     ".csv",
     ".txt",
@@ -86,6 +87,10 @@ def file_retention_hours() -> int:
     return int_from_env("FILE_RETENTION_HOURS", DEFAULT_FILE_RETENTION_HOURS, 1)
 
 
+def max_batch_files() -> int:
+    return int_from_env("MAX_BATCH_FILES", DEFAULT_MAX_BATCH_FILES, 1)
+
+
 def redact_exports() -> bool:
     return bool_from_env("REDACT_EXPORTS", False)
 
@@ -128,6 +133,22 @@ def api_get_job(job_id: str) -> dict[str, Any]:
 
 @app.post("/api/upload")
 async def api_upload(file: Annotated[UploadFile, File(...)]) -> dict[str, Any]:
+    return await process_upload_file(file)
+
+
+@app.post("/api/upload/batch")
+async def api_upload_batch(files: Annotated[list[UploadFile], File(...)]) -> dict[str, Any]:
+    if not files:
+        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="at least one file is required")
+    if len(files) > max_batch_files():
+        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=f"too many files; limit is {max_batch_files()}")
+    jobs = []
+    for file in files:
+        jobs.append(await process_upload_file(file))
+    return {"jobs": jobs}
+
+
+async def process_upload_file(file: UploadFile) -> dict[str, Any]:
     upload_limit = max_upload_bytes()
     file_bytes = await read_upload_bytes(file, upload_limit)
     validate_upload(file.filename or "statement", file_bytes, upload_limit)
