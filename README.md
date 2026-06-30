@@ -20,6 +20,7 @@ summaries.
   - counterparty concentration
 - Includes a receipt fallback parser for bank e-receipt screenshots.
 - Runs on FastAPI with upload validation and 24-hour file retention by default.
+- Stores job state in local SQLite and automatically migrates legacy `data/jobs.json` when possible.
 
 ## Run
 
@@ -64,6 +65,15 @@ FILE_RETENTION_HOURS=24
 
 `FILE_RETENTION_HOURS` applies to uploaded source files and exported reports.
 The default is 24 hours.
+
+Job state is stored in:
+
+```text
+data/jobs.sqlite3
+```
+
+If a legacy `data/jobs.json` file exists and the SQLite database is empty, the
+app imports those job records once on startup/use.
 
 ## Optional Cloud OCR
 
