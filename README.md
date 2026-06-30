@@ -18,7 +18,11 @@ summaries.
   - large round-number transactions
   - same-day large in/out activity
   - counterparty concentration
-- Includes a receipt fallback parser for bank e-receipt screenshots.
+- Includes receipt OCR template adapters for:
+  - ICBC e-receipts
+  - ABC account transaction details
+  - BOCOM receipts
+  - bank acceptance bill endorsement/pledge backs
 - Runs on FastAPI with upload validation and 24-hour file retention by default.
 - Stores job state in local SQLite and automatically migrates legacy `data/jobs.json` when possible.
 
@@ -74,6 +78,18 @@ data/jobs.sqlite3
 
 If a legacy `data/jobs.json` file exists and the SQLite database is empty, the
 app imports those job records once on startup/use.
+
+## Receipt OCR Templates
+
+Receipt templates are text-only adapters. They consume OCR text and do not
+commit or require private image fixtures in the repository.
+
+Currently covered templates:
+
+- ICBC e-receipts: amount, date, payer/payee, summary, serial number.
+- ABC account transaction details: amount, transaction date, payee, summary, purpose.
+- BOCOM receipts: debit/credit flag, amount, payee, summary, accounting serial number.
+- Bank acceptance bill backs: endorsement/pledge party, bill number, endorsement date.
 
 ## Optional Cloud OCR
 
