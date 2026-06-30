@@ -6,3 +6,6 @@ venv/
 data/uploads/
 data/exports/
 data/jobs.json
+data/*.sqlite3
+data/*.sqlite3-shm
+data/*.sqlite3-wal
