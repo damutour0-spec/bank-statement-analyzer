@@ -44,14 +44,16 @@ def get_job(job_id: str) -> dict[str, Any] | None:
 def list_jobs() -> list[dict[str, Any]]:
     init_db()
     with closing(connect()) as connection:
-        rows = connection.execute(
-            "SELECT data_json FROM jobs ORDER BY created_at DESC, id DESC"
-        ).fetchall()
+        rows = connection.execute("SELECT data_json FROM jobs ORDER BY created_at DESC, id DESC").fetchall()
     return [json.loads(row["data_json"]) for row in rows]
 
 
 def save_job(job: dict[str, Any]) -> None:
-    init_db()
+    init_db(migrate_legacy=False)
+    insert_job(job)
+
+
+def insert_job(job: dict[str, Any]) -> None:
     job_id = str(job["id"])
     created_at = str(job.get("created_at") or now_iso())
     updated_at = str(job.get("updated_at") or "")
@@ -76,7 +78,7 @@ def save_job(job: dict[str, Any]) -> None:
         connection.commit()
 
 
-def init_db() -> None:
+def init_db(migrate_legacy: bool = True) -> None:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     with closing(connect()) as connection:
         connection.execute(
@@ -93,7 +95,8 @@ def init_db() -> None:
         )
         connection.execute("CREATE INDEX IF NOT EXISTS idx_jobs_created_at ON jobs(created_at DESC)")
         connection.commit()
-    migrate_legacy_json_once()
+    if migrate_legacy:
+        migrate_legacy_json_once()
 
 
 def migrate_legacy_json_once() -> None:
@@ -115,7 +118,7 @@ def migrate_legacy_json_once() -> None:
     for job_id, job in legacy_data.items():
         if isinstance(job, dict):
             job.setdefault("id", job_id)
-            save_job(job)
+            insert_job(job)
 
 
 def connect() -> sqlite3.Connection:
