@@ -9,7 +9,7 @@ summaries.
 - Upload CSV, XLSX, XLSM, TXT, text-based PDF, JPG, JPEG, PNG, BMP, TIFF, and WEBP.
 - Normalize common bank-statement fields into one transaction schema.
 - Use local OCR for image files through `rapidocr_onnxruntime`.
-- Export a multi-sheet Excel report.
+- Export an enhanced multi-sheet Excel report with cover, findings, summaries, rules, and raw text.
 - Run review rules for:
   - balance continuity
   - duplicate transactions
@@ -78,6 +78,19 @@ data/jobs.sqlite3
 
 If a legacy `data/jobs.json` file exists and the SQLite database is empty, the
 app imports those job records once on startup/use.
+
+## Excel Report Sheets
+
+The exported workbook includes:
+
+- `报告封面`: file metadata, date range, confidence, finding counts, and report boundary notice.
+- `标准流水`: normalized transaction rows with frozen header and filters.
+- `异常清单`: review findings with severity, explanation, evidence, and suggestion.
+- `汇总指标`: total income, total expense, net flow, and balance statistics.
+- `月度汇总`: monthly income, expense, net flow, and transaction count.
+- `对手方汇总`: top counterparties, flow amount, share, and transaction count.
+- `规则说明`: rule logic and suggested handling.
+- `原始文本`: extracted raw row/OCR text for manual traceability.
 
 ## Receipt OCR Templates
 
