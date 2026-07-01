@@ -2,6 +2,7 @@ const fs = require("fs");
 
 async function main() {
   const path = process.argv[2] || "samples/sample_statement.csv";
+  const baseUrl = process.env.BASE_URL || "http://127.0.0.1:8765";
   const boundary = `----codex${Date.now()}`;
   const body = Buffer.concat([
     Buffer.from(
@@ -13,7 +14,7 @@ async function main() {
     Buffer.from(`\r\n--${boundary}--\r\n`),
   ]);
 
-  const response = await fetch("http://127.0.0.1:8765/api/upload", {
+  const response = await fetch(`${baseUrl.replace(/\/$/, "")}/api/upload`, {
     method: "POST",
     headers: {
       "Content-Type": `multipart/form-data; boundary=${boundary}`,
