@@ -9,9 +9,12 @@ form.addEventListener("submit", async (event) => {
     statusText.textContent = "请先选择文件";
     return;
   }
+  const file = fileInput.files[0];
   const data = new FormData();
-  data.append("file", fileInput.files[0]);
-  statusText.textContent = "正在上传并解析...";
+  data.append("file", file);
+  statusText.textContent = isImageFile(file)
+    ? "正在调用图片 OCR，图片识别可能需要更久..."
+    : "正在上传并解析...";
   try {
     const response = await apiFetch("/api/upload", {
       method: "POST",
@@ -19,7 +22,7 @@ form.addEventListener("submit", async (event) => {
     });
     const payload = await response.json();
     if (!response.ok || payload.status === "failed") {
-      throw new Error(payload.error || "解析失败");
+      throw new Error(payload.error || payload.detail || "解析失败");
     }
     renderJob(payload);
     statusText.textContent = "解析完成";
@@ -69,6 +72,11 @@ function renderJob(job) {
     `;
     transactions.appendChild(row);
   }
+}
+
+function isImageFile(file) {
+  const name = (file && file.name ? file.name : "").toLowerCase();
+  return [".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff", ".webp"].some((suffix) => name.endsWith(suffix));
 }
 
 function escapeHtml(value) {
