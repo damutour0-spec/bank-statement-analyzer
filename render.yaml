@@ -2,6 +2,7 @@ services:
   - type: web
     name: bank-statement-api
     runtime: python
+    plan: free
     region: singapore
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn webapp.main:app --host 0.0.0.0 --port $PORT
@@ -24,3 +25,4 @@ services:
 databases:
   - name: bank-statement-db
     region: singapore
+    plan: free
