@@ -9,3 +9,9 @@ data/jobs.json
 data/*.sqlite3
 data/*.sqlite3-shm
 data/*.sqlite3-wal
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
+!.env.example
