@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: bank-statement-api
+    runtime: python
+    region: singapore
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn webapp.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: bank-statement-db
+          property: connectionString
+      - key: MAX_UPLOAD_BYTES
+        value: "20971520"
+      - key: MAX_BATCH_FILES
+        value: "10"
+      - key: FILE_RETENTION_HOURS
+        value: "24"
+      - key: REDACT_EXPORTS
+        value: "false"
+      - key: RULE_PROFILE
+        value: enterprise_flow_review
+
+databases:
+  - name: bank-statement-db
+    region: singapore
