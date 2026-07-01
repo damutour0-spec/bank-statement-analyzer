@@ -8,7 +8,8 @@ summaries.
 
 - Upload CSV, XLSX, XLSM, TXT, text-based PDF, JPG, JPEG, PNG, BMP, TIFF, and WEBP.
 - Normalize common bank-statement fields into one transaction schema.
-- Use local OCR for image files through `rapidocr_onnxruntime`.
+- Use local OCR for image files through `rapidocr_onnxruntime`, `paddleocr`, or `pytesseract`.
+- Use Baidu OCR for cloud image recognition when API keys are configured.
 - Export an enhanced multi-sheet Excel report with cover, findings, summaries, rules, and raw text.
 - Run review rules for:
   - balance continuity
@@ -70,6 +71,13 @@ MAX_BATCH_FILES=10
 FILE_RETENTION_HOURS=24
 REDACT_EXPORTS=false
 RULE_PROFILE=enterprise_flow_review
+CORS_ORIGINS=*
+OCR_PROVIDER=auto
+BAIDU_OCR_API_KEY=
+BAIDU_OCR_SECRET_KEY=
+BAIDU_OCR_LANGUAGE_TYPE=CHN_ENG
+BAIDU_OCR_DETECT_DIRECTION=true
+BAIDU_OCR_ENDPOINT=https://aip.baidubce.com/rest/2.0/ocr/v1/general_basic
 ```
 
 `FILE_RETENTION_HOURS` applies to uploaded source files and exported reports.
@@ -121,6 +129,27 @@ Start Command: uvicorn webapp.main:app --host 0.0.0.0 --port $PORT
 
 Set `DATABASE_URL` to the Render PostgreSQL internal connection string.
 
+### Render OCR setup
+
+For Render Free/Starter instances, prefer Baidu OCR instead of installing heavy
+local OCR packages. Add these secret environment variables manually in Render:
+
+```text
+BAIDU_OCR_API_KEY=your_api_key
+BAIDU_OCR_SECRET_KEY=your_secret_key
+```
+
+The non-secret defaults are already documented in `render.yaml`:
+
+```text
+OCR_PROVIDER=auto
+BAIDU_OCR_LANGUAGE_TYPE=CHN_ENG
+BAIDU_OCR_DETECT_DIRECTION=true
+BAIDU_OCR_ENDPOINT=https://aip.baidubce.com/rest/2.0/ocr/v1/general_basic
+```
+
+After changing OCR environment variables, redeploy the Render Web Service.
+
 ## Excel Report Sheets
 
 The exported workbook includes:
@@ -146,23 +175,30 @@ Currently covered templates:
 - BOCOM receipts: debit/credit flag, amount, payee, summary, accounting serial number.
 - Bank acceptance bill backs: endorsement/pledge party, bill number, endorsement date.
 
-## Optional Cloud OCR
+## OCR Strategy
 
-The parser tries OCR providers in this order:
+The parser tries OCR providers in this order when `OCR_PROVIDER=auto`:
 
 1. `rapidocr_onnxruntime`
 2. `paddleocr`
 3. `pytesseract`
 4. Baidu OCR, when keys are configured
 
-For Baidu OCR, copy `.env.example` to `.env` and fill in:
+To force Baidu OCR for image uploads, set:
+
+```text
+OCR_PROVIDER=baidu
+```
+
+For Baidu OCR, copy `.env.example` to `.env` locally or configure Render secrets:
 
 ```text
 BAIDU_OCR_API_KEY=your_api_key
 BAIDU_OCR_SECRET_KEY=your_secret_key
 ```
 
-Restart the app after changing `.env`.
+Baidu OCR access tokens are cached in memory until shortly before expiry to
+avoid requesting a new token for every uploaded image.
 
 ## Product Boundary
 
