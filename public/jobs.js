@@ -8,7 +8,7 @@ if (refreshJobs && jobsTable) {
 
 async function loadJobs() {
   try {
-    const response = await fetch("/api/jobs");
+    const response = await apiFetch("/api/jobs");
     const payload = await response.json();
     renderJobs(payload.jobs || []);
   } catch (error) {
@@ -33,7 +33,7 @@ function renderJobs(jobs) {
     const action = document.createElement("td");
     if (job.export_url) {
       const link = document.createElement("a");
-      link.href = job.export_url;
+      link.href = apiUrl(job.export_url);
       link.textContent = "下载";
       link.className = "mini-link";
       action.appendChild(link);
