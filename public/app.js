@@ -13,7 +13,7 @@ form.addEventListener("submit", async (event) => {
   data.append("file", fileInput.files[0]);
   statusText.textContent = "正在上传并解析...";
   try {
-    const response = await fetch("/api/upload", {
+    const response = await apiFetch("/api/upload", {
       method: "POST",
       body: data,
     });
@@ -36,7 +36,7 @@ function renderJob(job) {
   document.querySelector("#findingCount").textContent = (job.findings || []).length;
   document.querySelector("#confidence").textContent = statement.confidence ? `${Math.round(statement.confidence * 100)}%` : "-";
   const exportLink = document.querySelector("#exportLink");
-  exportLink.href = job.export_url || "#";
+  exportLink.href = job.export_url ? apiUrl(job.export_url) : "#";
 
   const findings = document.querySelector("#findings");
   findings.innerHTML = "";
@@ -79,4 +79,3 @@ function escapeHtml(value) {
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
 }
-
