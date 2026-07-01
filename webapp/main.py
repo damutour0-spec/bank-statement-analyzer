@@ -13,6 +13,7 @@ from typing import Annotated, Any
 
 import uvicorn
 from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -82,6 +83,11 @@ def bool_from_env(name: str, default: bool = False) -> bool:
     return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
+def list_from_env(name: str, default: str = "") -> list[str]:
+    raw = os.getenv(name, default)
+    return [item.strip() for item in raw.split(",") if item.strip()]
+
+
 def max_upload_bytes() -> int:
     return int_from_env("MAX_UPLOAD_BYTES", DEFAULT_MAX_UPLOAD_BYTES, 1024 * 1024)
 
@@ -118,6 +124,12 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(title="Bank Statement Analyzer", version="0.2", lifespan=lifespan)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=list_from_env("CORS_ORIGINS", "*"),
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["*"],
+)
 
 
 @app.get("/api/jobs")
