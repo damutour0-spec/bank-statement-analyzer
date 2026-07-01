@@ -5,6 +5,8 @@ import time
 import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from datetime import datetime
+from decimal import Decimal, InvalidOperation
 from http import HTTPStatus
 from pathlib import Path
 from typing import Annotated, Any
@@ -15,6 +17,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from statement_analyzer.exporter import export_workbook
+from statement_analyzer.models import AnalysisResult, Finding, Statement, Transaction
 from statement_analyzer.parser import parse_statement
 from statement_analyzer.privacy import redact_statement
 from statement_analyzer.rules import analyze_statement
@@ -193,12 +196,115 @@ def download_export(file_name: str) -> FileResponse:
     cleanup_expired_files()
     export_path = EXPORT_DIR / Path(file_name).name
     if not export_path.exists() or not export_path.is_file():
+        regenerate_export_from_job(export_path.name, export_path)
+    if not export_path.exists() or not export_path.is_file():
         raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="export not found or expired")
     return FileResponse(
         export_path,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         filename=export_path.name,
     )
+
+
+def regenerate_export_from_job(file_name: str, export_path: Path) -> None:
+    job_id = job_id_from_export_name(file_name)
+    if not job_id:
+        return
+    job = get_job(job_id)
+    if not job or job.get("status") != "done":
+        return
+    statement = statement_from_job(job)
+    analysis = analysis_from_job(job)
+    export_path.parent.mkdir(parents=True, exist_ok=True)
+    export_statement = redact_statement(statement) if job.get("redacted_export") or redact_exports() else statement
+    export_workbook(export_statement, analysis, export_path)
+
+
+def job_id_from_export_name(file_name: str) -> str:
+    suffix = "_analysis.xlsx"
+    safe_name = Path(file_name).name
+    if not safe_name.endswith(suffix):
+        return ""
+    job_id = safe_name[: -len(suffix)]
+    return job_id if job_id.startswith("job_") else ""
+
+
+def statement_from_job(job: dict[str, Any]) -> Statement:
+    summary = job.get("statement") or {}
+    return Statement(
+        file_name=str(summary.get("file_name") or job.get("file_name") or "statement"),
+        file_type=str(summary.get("file_type") or ""),
+        bank_name=str(summary.get("bank_name") or "未知银行"),
+        account_name=str(summary.get("account_name") or ""),
+        account_no_masked=str(summary.get("account_no_masked") or ""),
+        transactions=[transaction_from_dict(item) for item in job.get("transactions", [])],
+        confidence=float(summary.get("confidence") or 1.0),
+    )
+
+
+def transaction_from_dict(data: dict[str, Any]) -> Transaction:
+    return Transaction(
+        row_no=int(data.get("row_no") or 0),
+        transaction_date=parse_datetime(data.get("transaction_date")),
+        summary=str(data.get("summary") or ""),
+        counterparty_name=str(data.get("counterparty_name") or ""),
+        income_amount=parse_decimal(data.get("income_amount")),
+        expense_amount=parse_decimal(data.get("expense_amount")),
+        balance=parse_optional_decimal(data.get("balance")),
+        currency=str(data.get("currency") or "CNY"),
+        channel=str(data.get("channel") or ""),
+        postscript=str(data.get("postscript") or ""),
+        raw_text=str(data.get("raw_text") or ""),
+        confidence=float(data.get("confidence") or 1.0),
+    )
+
+
+def analysis_from_job(job: dict[str, Any]) -> AnalysisResult:
+    return AnalysisResult(
+        findings=[finding_from_dict(item) for item in job.get("findings", [])],
+        metrics=job.get("metrics") or {},
+    )
+
+
+def finding_from_dict(data: dict[str, Any]) -> Finding:
+    return Finding(
+        finding_type=str(data.get("finding_type") or ""),
+        severity=str(data.get("severity") or "info"),
+        title=str(data.get("title") or ""),
+        description=str(data.get("description") or ""),
+        row_no=data.get("row_no"),
+        evidence=data.get("evidence") or {},
+        suggestion=str(data.get("suggestion") or ""),
+    )
+
+
+def parse_datetime(value: Any) -> datetime | None:
+    if not value:
+        return None
+    text = str(value)
+    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d"):
+        try:
+            return datetime.strptime(text, fmt)
+        except ValueError:
+            continue
+    try:
+        return datetime.fromisoformat(text)
+    except ValueError:
+        return None
+
+
+def parse_decimal(value: Any) -> Decimal:
+    parsed = parse_optional_decimal(value)
+    return parsed if parsed is not None else Decimal("0")
+
+
+def parse_optional_decimal(value: Any) -> Decimal | None:
+    if value in (None, ""):
+        return None
+    try:
+        return Decimal(str(value))
+    except (InvalidOperation, ValueError):
+        return None
 
 
 async def read_upload_bytes(file: UploadFile, upload_limit: int) -> bytes:
