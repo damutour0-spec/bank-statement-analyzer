@@ -1,6 +1,7 @@
 def test_sqlite_storage_roundtrip(tmp_path, monkeypatch):
     import statement_analyzer.storage as storage
 
+    monkeypatch.delenv("DATABASE_URL", raising=False)
     monkeypatch.setattr(storage, "DATA_DIR", tmp_path)
     monkeypatch.setattr(storage, "DB_PATH", tmp_path / "jobs.sqlite3")
     monkeypatch.setattr(storage, "LEGACY_JSON_PATH", tmp_path / "jobs.json")
@@ -24,6 +25,7 @@ def test_sqlite_storage_roundtrip(tmp_path, monkeypatch):
 def test_legacy_jobs_json_is_migrated_once(tmp_path, monkeypatch):
     import statement_analyzer.storage as storage
 
+    monkeypatch.delenv("DATABASE_URL", raising=False)
     monkeypatch.setattr(storage, "DATA_DIR", tmp_path)
     monkeypatch.setattr(storage, "DB_PATH", tmp_path / "jobs.sqlite3")
     monkeypatch.setattr(storage, "LEGACY_JSON_PATH", tmp_path / "jobs.json")
@@ -36,3 +38,29 @@ def test_legacy_jobs_json_is_migrated_once(tmp_path, monkeypatch):
     assert job is not None
     assert job["file_name"] == "old.csv"
     assert job["status"] == "done"
+
+
+def test_storage_uses_postgres_only_for_postgres_database_url(monkeypatch):
+    import statement_analyzer.storage as storage
+
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    assert storage.using_postgres() is False
+
+    monkeypatch.setenv("DATABASE_URL", "sqlite:///tmp/jobs.sqlite3")
+    assert storage.using_postgres() is False
+
+    monkeypatch.setenv("DATABASE_URL", "postgresql://user:pass@localhost:5432/db")
+    assert storage.using_postgres() is True
+
+    monkeypatch.setenv("DATABASE_URL", "postgres://user:pass@localhost:5432/db")
+    assert storage.using_postgres() is True
+
+
+def test_sql_placeholder_changes_by_backend(monkeypatch):
+    import statement_analyzer.storage as storage
+
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    assert storage.format_sql("WHERE id = {placeholder}") == "WHERE id = ?"
+
+    monkeypatch.setenv("DATABASE_URL", "postgresql://user:pass@localhost:5432/db")
+    assert storage.format_sql("WHERE id = {placeholder}") == "WHERE id = %s"
