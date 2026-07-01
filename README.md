@@ -24,7 +24,8 @@ summaries.
   - BOCOM receipts
   - bank acceptance bill endorsement/pledge backs
 - Runs on FastAPI with upload validation and 24-hour file retention by default.
-- Stores job state in local SQLite and automatically migrates legacy `data/jobs.json` when possible.
+- Supports SQLite locally and PostgreSQL on cloud platforms such as Render.
+- Stores job state in local SQLite by default and automatically migrates legacy `data/jobs.json` when possible.
 
 ## Run
 
@@ -63,21 +64,62 @@ In the Codex bundled runtime, use:
 Optional environment variables:
 
 ```text
+DATABASE_URL=
 MAX_UPLOAD_BYTES=20971520
+MAX_BATCH_FILES=10
 FILE_RETENTION_HOURS=24
+REDACT_EXPORTS=false
+RULE_PROFILE=enterprise_flow_review
 ```
 
 `FILE_RETENTION_HOURS` applies to uploaded source files and exported reports.
 The default is 24 hours.
 
-Job state is stored in:
+Job state is stored in local SQLite when `DATABASE_URL` is empty:
 
 ```text
 data/jobs.sqlite3
 ```
 
+When `DATABASE_URL` starts with `postgres://` or `postgresql://`, the app uses
+PostgreSQL instead. The `jobs` table and index are created automatically during
+normal app use.
+
 If a legacy `data/jobs.json` file exists and the SQLite database is empty, the
-app imports those job records once on startup/use.
+app imports those job records once on startup/use. This legacy JSON migration is
+only used for local SQLite mode.
+
+## Render Deployment
+
+This repository includes `render.yaml` for Render Blueprint deployment.
+
+Recommended setup:
+
+```text
+Cloudflare Pages: frontend and domain
+Render Web Service: FastAPI backend
+Render PostgreSQL: job state database
+Cloudflare R2: future upload/export object storage
+```
+
+To deploy the backend and database on Render:
+
+1. Push this repository to GitHub.
+2. In Render, create a new Blueprint from the repository.
+3. Render reads `render.yaml` and creates:
+   - `bank-statement-api`
+   - `bank-statement-db`
+4. Keep both services in the Singapore region.
+5. After deploy, use the Render service URL as the API base URL for the frontend.
+
+Manual Render Web Service settings, if not using Blueprint:
+
+```text
+Build Command: pip install -r requirements.txt
+Start Command: uvicorn webapp.main:app --host 0.0.0.0 --port $PORT
+```
+
+Set `DATABASE_URL` to the Render PostgreSQL internal connection string.
 
 ## Excel Report Sheets
 
