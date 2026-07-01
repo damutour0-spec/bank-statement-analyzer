@@ -21,6 +21,8 @@ services:
         value: "false"
       - key: RULE_PROFILE
         value: enterprise_flow_review
+      - key: CORS_ORIGINS
+        value: "*"
 
 databases:
   - name: bank-statement-db
