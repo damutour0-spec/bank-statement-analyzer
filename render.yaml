@@ -23,6 +23,14 @@ services:
         value: enterprise_flow_review
       - key: CORS_ORIGINS
         value: "*"
+      - key: OCR_PROVIDER
+        value: auto
+      - key: BAIDU_OCR_LANGUAGE_TYPE
+        value: CHN_ENG
+      - key: BAIDU_OCR_DETECT_DIRECTION
+        value: "true"
+      - key: BAIDU_OCR_ENDPOINT
+        value: https://aip.baidubce.com/rest/2.0/ocr/v1/general_basic
 
 databases:
   - name: bank-statement-db

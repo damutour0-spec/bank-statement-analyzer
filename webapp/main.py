@@ -19,6 +19,7 @@ from fastapi.staticfiles import StaticFiles
 
 from statement_analyzer.exporter import export_workbook
 from statement_analyzer.models import AnalysisResult, Finding, Statement, Transaction
+from statement_analyzer.ocr import OcrUnavailableError
 from statement_analyzer.parser import parse_statement
 from statement_analyzer.privacy import redact_statement
 from statement_analyzer.rules import analyze_statement
@@ -195,12 +196,23 @@ async def process_upload_file(file: UploadFile) -> dict[str, Any]:
             },
         )
     except Exception as exc:
-        update_job(job_id, {"status": "failed", "error": str(exc)})
+        update_job(job_id, {"status": "failed", "error": upload_error_message(exc)})
 
     job = get_job(job_id)
     if not job:
         raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail="job state missing")
     return job
+
+
+def upload_error_message(exc: Exception) -> str:
+    if isinstance(exc, OcrUnavailableError):
+        return str(exc)
+    text = str(exc)
+    if "Baidu" in text or "百度 OCR" in text:
+        return text
+    if "未能识别交易明细" in text:
+        return "未能识别交易明细。请上传带表头的 Excel/CSV、原生文本 PDF；图片或扫描件请先配置百度 OCR。"
+    return text
 
 
 @app.get("/exports/{file_name}")

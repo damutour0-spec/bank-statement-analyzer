@@ -5,6 +5,7 @@ from http import HTTPStatus
 import pytest
 from fastapi import HTTPException
 
+from statement_analyzer.ocr import OcrUnavailableError
 from webapp.main import (
     job_id_from_export_name,
     parse_datetime,
@@ -12,6 +13,7 @@ from webapp.main import (
     parse_optional_decimal,
     sanitize_filename,
     statement_from_job,
+    upload_error_message,
     validate_upload,
 )
 
@@ -96,3 +98,15 @@ def test_statement_from_saved_job_payload():
     assert len(statement.transactions) == 1
     assert statement.transactions[0].income_amount == Decimal("20000.00")
     assert statement.transactions[0].balance == Decimal("30000.00")
+
+
+def test_upload_error_message_preserves_ocr_guidance():
+    message = upload_error_message(OcrUnavailableError("图片识别需要配置 OCR。"))
+
+    assert message == "图片识别需要配置 OCR。"
+
+
+def test_upload_error_message_rewrites_unrecognized_transactions():
+    message = upload_error_message(ValueError("未能识别交易明细，请上传带表头的 Excel/CSV。"))
+
+    assert "图片或扫描件请先配置百度 OCR" in message
